@@ -255,46 +255,35 @@ def multi_vehicle_routing(graph, vehicle_data, algorithm):
 
 # ===== Helper Functions =====
 def haversine_distance(lat1, lon1, lat2, lon2):
-    """Calculate the great circle distance between two points on Earth."""
-    # Convert latitude and longitude from degrees to radians
     lat1_rad = radians(lat1)
     lon1_rad = radians(lon1)
     lat2_rad = radians(lat2)
     lon2_rad = radians(lon2)
     
-    # Haversine formula
     dlon = lon2_rad - lon1_rad
     dlat = lat2_rad - lat1_rad
     a = sin(dlat/2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon/2)**2
     c = 2 * atan2(sqrt(a), sqrt(1-a))
     
-    # Earth radius in kilometers
     radius = 6371.0
     
-    # Calculate the distance
     distance = radius * c
     return distance
 
 def interpolate_points_along_path(coord1, coord2, num_points=20):
-    """Generate interpolated points along a straight line between two coordinates."""
     lat1, lon1 = coord1
     lat2, lon2 = coord2
     
-    # Create evenly spaced points
     lat_points = np.linspace(lat1, lat2, num_points)
     lon_points = np.linspace(lon1, lon2, num_points)
     
-    # Combine into coordinate pairs
     return list(zip(lat_points, lon_points))
 
 def create_detailed_vehicle_animation_geojson(routes):
-    """Create a GeoJSON with detailed animation points interpolated along the edges of the route."""
     features = []
     
-    # Set base time and animation parameters
-    base_time = datetime.datetime(2025, 4, 27, 9, 0, 0)  # Starting at 9 AM
+    base_time = datetime.datetime(2025, 4, 27, 9, 0, 0)
     
-    # Colors for different routes
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'cadetblue', 'darkgreen', 'black', 'pink']
     vehicle_icons = ['truck', 'shipping', 'truck', 'car', 'truck', 'plane', 'truck', 'car', 'truck', 'shipping']
     
@@ -306,7 +295,6 @@ def create_detailed_vehicle_animation_geojson(routes):
         if not path_nodes or len(path_nodes) < 2:
             continue
             
-        # Extract coordinates for each node in the path
         node_coords = []
         for node in path_nodes:
             if pd.notna(G.nodes[node]['latitude']) and pd.notna(G.nodes[node]['longitude']):
@@ -315,7 +303,6 @@ def create_detailed_vehicle_animation_geojson(routes):
         if len(node_coords) < 2:
             continue
         
-        # Create interpolated points along each edge
         all_coords = []
         edge_times = []
         edge_distances = []
@@ -324,50 +311,41 @@ def create_detailed_vehicle_animation_geojson(routes):
             from_node = path_nodes[i]
             to_node = path_nodes[i+1]
             
-            # Get edge weight (time in hours)
             edge_weight = G[from_node][to_node]['weight']
             
-            # Get edge distance
             edge_distance = G[from_node][to_node].get('distance_km', 
                                                        haversine_distance(node_coords[i][0], node_coords[i][1],
                                                                           node_coords[i+1][0], node_coords[i+1][1]))
             
-            # Number of points to generate along the edge (proportional to distance)
-            points_per_km = 10  # 10 points per kilometer
+            points_per_km = 10 
             num_points = max(5, int(edge_distance * points_per_km))
             
-            # Generate points along this edge
             points = interpolate_points_along_path(node_coords[i], node_coords[i+1], num_points)
             
-            # Add all except the last point (to avoid duplicates)
             if i < len(node_coords) - 2:
                 all_coords.extend(points[:-1])
             else:
-                all_coords.extend(points)  # Include last point for final edge
+                all_coords.extend(points)
             
             edge_times.append(edge_weight)
             edge_distances.append(edge_distance)
         
-        # Calculate time intervals between each interpolated point
         total_points = len(all_coords)
-        total_time = sum(edge_times)  # Total time in hours
+        total_time = sum(edge_times) 
         
-        # Adjust total time based on animation speed (1-10 scale)
         animation_speed = st.session_state.get('animation_speed', 5)
-        scaling_factor = 11 - animation_speed  # Invert scale: 10 -> 1, 1 -> 10
-        adjusted_time = total_time * (scaling_factor / 5)  # Scale around the middle value of 5
+        scaling_factor = 11 - animation_speed  
+        adjusted_time = total_time * (scaling_factor / 5)  
         
-        time_per_point = adjusted_time / total_points  # Time in hours per point
+        time_per_point = adjusted_time / total_points  
         
         current_time = base_time
         vehicle_label = f"Kendaraan {route['vehicle']+1}"
         weight_info = f"{route['weight']:.1f}/{route['capacity']:.1f} ton"
         
-        # Create feature for each interpolated point with appropriate timing
         for i, coord in enumerate(all_coords):
             popup_content = f"{vehicle_label}<br>Muatan: {weight_info}"
             
-            # Add information about current road segment
             current_node_idx = 0
             for j, edge_dist in enumerate(edge_distances):
                 if current_node_idx + (edge_dist * points_per_km) > i:
@@ -381,7 +359,7 @@ def create_detailed_vehicle_animation_geojson(routes):
                 'type': 'Feature',
                 'geometry': {
                     'type': 'Point',
-                    'coordinates': [coord[1], coord[0]]  # GeoJSON uses [lon, lat]
+                    'coordinates': [coord[1], coord[0]] 
                 },
                 'properties': {
                     'time': current_time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -394,31 +372,27 @@ def create_detailed_vehicle_animation_geojson(routes):
             }
             features.append(feature)
             
-            # Increment time for next point (convert hours to seconds)
             time_increment = datetime.timedelta(seconds=time_per_point * 3600)
             current_time += time_increment
     
     return features
 
 def add_smooth_vehicle_animation(m, routes):
-    """Add smooth vehicle animation to the map using interpolated points along edges."""
     import json
     from folium.plugins import TimestampedGeoJson
     
-    # Generate detailed animation features
     features = create_detailed_vehicle_animation_geojson(routes)
     
-    # Add TimestampedGeoJson to the map
     TimestampedGeoJson(
         {
             'type': 'FeatureCollection',
             'features': features
         },
-        period='PT1S',  # Update every 1 second
-        duration='PT1S',  # Each point lasts for 1 second
+        period='PT1S',  
+        duration='PT1S',  
         auto_play=True,
         loop=False,
-        max_speed=30,  # Allow faster playback
+        max_speed=30,  
         loop_button=True,
         date_options='YYYY-MM-DD HH:mm:ss',
         time_slider_drag_update=True,
@@ -464,7 +438,6 @@ animation_speed = st.sidebar.slider("Kecepatan Animasi",
                                value=5, 
                                help="Sesuaikan kecepatan animasi kendaraan")
 
-# Store animation speed in session state
 st.session_state['animation_speed'] = animation_speed
 
 show_performance = st.sidebar.checkbox("Visualisasi Performa Komputasi")
@@ -488,19 +461,16 @@ if visualization_option == "Peta dengan Animasi Halus":
     
     m = folium.Map(location=[-6.2297, 106.8532], zoom_start=15)
     
-    # Add all nodes as markers
     for node in G.nodes:
         lat, lon = G.nodes[node].get('latitude'), G.nodes[node].get('longitude')
         label = G.nodes[node].get('label', str(node))
         if pd.notna(lat) and pd.notna(lon):
             Marker([lat, lon], tooltip=label, icon=folium.Icon(color="gray", icon="circle", prefix='fa')).add_to(m)
     
-    # Draw routes with AntPath for better visual effect
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'cadetblue', 'darkgreen', 'black', 'pink']
     for idx, route in routes.items():
         coords = [[G.nodes[n]['latitude'], G.nodes[n]['longitude']] for n in route['path'] if pd.notna(G.nodes[n]['latitude'])]
         if coords:
-            # Use AntPath for animated path effect
             AntPath(
                 locations=coords,
                 color=colors[idx % len(colors)],
@@ -511,7 +481,6 @@ if visualization_option == "Peta dengan Animasi Halus":
                 tooltip=f"Rute Kendaraan {route['vehicle']+1}"
             ).add_to(m)
             
-            # Add start and end markers
             start_label = id_to_label.get(route['start'], str(route['start']))
             end_label = id_to_label.get(route['end'], str(route['end']))
             
@@ -527,7 +496,6 @@ if visualization_option == "Peta dengan Animasi Halus":
                 tooltip=f"End: {end_label}"
             ).add_to(m)
             
-            # Add markers for stops
             if 'stops' in route and route['stops']:
                 for stop in route['stops']:
                     stop_lat = G.nodes[stop]['latitude']
@@ -540,10 +508,8 @@ if visualization_option == "Peta dengan Animasi Halus":
                             tooltip=f"Stop: {stop_label}"
                         ).add_to(m)
     
-    # Add smooth vehicle animation along edges
     m = add_smooth_vehicle_animation(m, routes)
     
-    # Display the map
     st_data = st_folium(m, width=900, height=500)
     
     
@@ -645,7 +611,7 @@ for idx, (key, route) in enumerate(routes.items(), start=1):
         st.write(f"**📏 Total Jarak:** {route['distance']:.2f} km")
         st.write(f"**⏱️ Estimasi Waktu:** {route['cost'] * 60:.0f} menit")
         
-        biaya_per_km = 5000  # Rp per km
+        biaya_per_km = 5000  
         total_biaya = route['distance'] * biaya_per_km
         st.write(f"**💸 Estimasi Biaya:** Rp {total_biaya:,.0f}")
 

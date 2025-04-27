@@ -1,4 +1,4 @@
-# 🚚 Sistem Optimasi Rute Pengiriman Barang - Tebet, Jakarta Selatan
+# 🚚 Sistem Optimasi Rute Pengiriman Barang - Tebet, Jakarta Selatan (Simulasi Animasi)
 
 Proyek ini adalah aplikasi berbasis 
 **Streamlit** yang memvisualisasikan rute pengiriman barang di wilayah **Tebet, Jakarta Selatan** menggunakan algoritma **Dijkstra** dan **A\***. Aplikasi ini mengoptimasi pengiriman dari depot ke ruko/gedung berdasarkan prioritas, kapasitas kendaraan, dan permintaan pengiriman.

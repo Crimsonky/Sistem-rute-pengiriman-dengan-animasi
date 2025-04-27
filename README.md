@@ -39,7 +39,7 @@ Proyek ini adalah project Penalaran Komputer aplikasi berbasis
    ```
 
 ## 🌐 Link Aplikasi Streamlit untuk Pengujian
-- [Klik di sini Streamlit](https://sistem-rute-kelompok-5.streamlit.app/)
+- [Klik di sini Streamlit](https://sistem-rute-pengiriman-dengan-animasi.streamlit.app/)
 
 
 ## 🛠️ Struktur File

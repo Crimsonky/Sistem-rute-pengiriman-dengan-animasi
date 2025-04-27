@@ -18,8 +18,8 @@ Proyek ini adalah project Penalaran Komputer aplikasi berbasis
 
 1. **Clone repository ini**:
    ```bash
-   git clone https://github.com/Crimsonky/Sistem-Rute-Pengiriman-Barang.git
-   cd Sistem-Rute-Pengiriman-Barang
+   git clone https://github.com/Crimsonky/Sistem-rute-pengiriman-dengan-animasi.git
+   cd Sistem-rute-pengiriman-dengan-animasi
    ```
 
 2. **Install dependencies**:
